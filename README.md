@@ -1,6 +1,6 @@
-# ELF 加壳工具 (ELF Packer for Android)
+# 加固大师 (ELF + APK Protection Suite for Android)
 
-> Android APK 工具，对 ELF 可执行二进制文件进行加密加壳保护。
+> Android 一体化保护工具，支持对 ELF 可执行文件加壳和对 Android APK 多维度加固混淆。
 
 ![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B-brightgreen)
 ![Language](https://img.shields.io/badge/Language-Java-orange)
@@ -10,52 +10,96 @@
 
 ## 📖 项目简介
 
-本工具是一款运行在 Android 设备上的 ELF 二进制文件加壳/加密工具，支持以下四种保护方式：
+本工具是一款运行在 Android 设备上的一体化安全保护工具，提供两大功能模块：
+
+### ⚙️ ELF 文件加壳
 
 | 保护方式 | 英文名 | 原理简介 |
 |---------|--------|---------|
-| 🔒 UPX 压缩加壳 | UPX Packing | 压缩 ELF 文件，减小体积，加入自定义解压存根 |
-| 📦 GZIP 加密压缩 | GZIP Encryption | AES-256-CBC 加密 + GZIP 压缩，双重保护 |
-| 🛡️ VMP 虚拟机保护 | Virtual Machine Protection | 将代码段虚拟化，XOR 混淆 + VM 头注入 |
+| 🔒 UPX 压缩加壳 | UPX Packing | DEFLATE 压缩 + UPX 魔数头，减小体积并防止静态分析 |
+| 📦 GZIP 加密压缩 | GZIP Encryption | AES-256-CBC 加密 + GZIP 压缩双重保护，密钥由文件 SHA-256 哈希派生 |
+| 🛡️ VMP 虚拟机保护 | Virtual Machine Protection | 解析 ELF PT_LOAD 段、XOR 加密代码段 + 注入 64 字节 VM 解释器头 |
 | 🔀 OLLVM 混淆 | OLLVM Obfuscation | 控制流平坦化 + 指令替换 + 虚假控制流三重混淆 |
+
+### 📦 APK 加固保护
+
+| 保护方式 | 英文名 | 原理简介 |
+|---------|--------|---------|
+| 🔤 字符串混淆 | String Obfuscation | XOR 加密 DEX 字符串常量池，密钥存入 `META-INF/str_keys.bin` |
+| 📁 资源文件混淆 | Asset Obfuscation | 随机重命名 `assets/` 目录文件 + XOR 加密内容，映射存入 `META-INF/asset_map.bin` |
+| 🏷️ 类名方法名混淆 | Class/Method Obfuscation | DEX 字符串池内替换类描述符和方法名为随机字母串 |
+| ⚡ DEX2C 本地化 | DEX2C Protection | 解析 DEX 方法表 + 注入 ARM64 native stub ELF + 生成 `META-INF/dex2c_manifest.bin` |
+
+多种 APK 保护方式可以**叠加组合**，以流水线方式依次执行。
 
 ---
 
 ## 🚀 使用方法
 
-1. 安装 APK 到 Android 设备（Android 8.0+）
-2. 打开应用，主界面显示 4 种加壳选项
-3. 点击底部"选择 ELF 文件并加壳"按钮
-4. 从文件管理器选取目标 ELF 文件
-5. 在弹出对话框中选择加壳方式
-6. 等待处理完成，查看结果并导出
+### ELF 文件加壳
+1. 打开应用，点击「ELF 文件加壳」卡片
+2. 选择加壳方式（UPX / GZIP+AES / VMP / OLLVM）
+3. 点击「选择 ELF 文件并加壳」，从文件管理器选取目标文件
+4. 等待处理完成，查看结果并导出/分享
+
+### APK 加固保护
+1. 点击「APK 加固保护」卡片
+2. 点击「选择 APK 文件并加固」，选取目标 APK
+3. 勾选所需保护技术（可多选）
+4. 点击「开始加固」，等待处理完成后查看结果
+
+输出文件保存在：`/sdcard/Android/data/com.elfpacker.app/files/packed/`
 
 ---
 
 ## 🔧 技术原理
 
-### UPX 压缩加壳
-模拟 UPX 头部格式，将原始 ELF 数据用 DEFLATE 算法压缩，写入 UPX 魔数头（`!UPX`），生成带解压存根标记的输出文件。
+### ELF 加壳
 
-### GZIP 加密压缩
-1. 读取 ELF 文件内容
-2. 使用 PBKDF2 从文件 SHA-256 哈希派生 AES-256 密钥
+#### UPX 压缩加壳
+写入 13 字节 UPX 魔数头（`!UPX` + 版本/方法标志），用 DEFLATE 算法压缩原始 ELF 数据，
+写入原始长度（4 字节 LE），便于解压存根分配缓冲区。
+
+#### GZIP 加密压缩
+1. 计算原始文件 SHA-256 哈希值
+2. 生成随机 16 字节 IV，用 PBKDF2WithHmacSHA256（10000 次迭代）派生 AES-256 密钥
 3. AES-256-CBC 加密原始数据
-4. GZIP 压缩加密后的数据
-5. 写入自定义文件头：Magic（8字节）+ IV（16字节）+ 长度（4字节）+ 数据
+4. GZIP 压缩密文
+5. 写入 8 字节 Magic + 16 字节 IV + 4 字节原始长度 + GZIP 数据
 
-### VMP 虚拟机保护
-1. 解析 ELF 头（Magic、架构、入口点）
-2. 定位 `.text` 代码段
-3. 对代码段进行逐字节 XOR 混淆（随机密钥）
-4. 在文件起始处注入 VM 解释器标记头
-5. 运行时由 VM 解释器解密并执行
+#### VMP 虚拟机保护
+1. 解析 ELF 头（EI_CLASS、e_machine、e_entry、程序头表）
+2. 定位覆盖入口点的 PT_LOAD 段（即 .text 所在段）
+3. 生成 32 字节随机 XOR 密钥，对代码段逐字节加密
+4. 在文件起始处注入 64 字节 VM 头（含密钥和加密区间信息）
 
-### OLLVM 混淆
-模拟 OLLVM 编译器的三种混淆 pass：
-- **控制流平坦化**：将代码块打散重排，通过调度器控制执行流
-- **指令替换**：将简单运算替换为等价但更复杂的操作序列
-- **虚假控制流**：插入永远不会执行的虚假代码路径
+#### OLLVM 混淆
+1. **指令替换**：以 4 字节为单位对约 33% 的字执行等价变换 `w → ~w ^ 0xA5A5A5A5`
+2. **控制流平坦化**：将代码分成 64 字节块并随机打乱存储顺序，写入块索引表
+3. **虚假控制流**：追加约 10% 大小的随机"死代码"字节块
+
+### APK 加固
+
+#### 字符串混淆
+遍历 APK（ZIP）内所有 `.dex` 文件，解析 DEX 字符串池（`string_ids` 表），
+对每个字符串数据字节执行 XOR 加密（per-DEX 独立 32 字节随机密钥）。
+密钥映射写入 `META-INF/str_keys.bin`。
+
+#### 资源文件混淆
+将 `assets/` 目录下所有文件重命名为随机 8 字符十六进制名称（保留扩展名），
+并对文件内容进行 XOR 加密（16 字节随机密钥）。
+原始路径与混淆路径的映射及密钥写入 `META-INF/asset_map.bin`。
+
+#### 类名方法名混淆
+直接操作 DEX 字符串池字节，将类型描述符（`Lpackage/ClassName;`）中的简单类名
+和方法名替换为随机 4-6 字符字母串（保留 `<init>`、`onCreate` 等框架保留名）。
+重命名映射写入 `META-INF/class_map.bin`。
+
+#### DEX2C 本地化
+1. 解析 DEX `method_id` 表，提取前 50 个方法的类名和方法名
+2. 生成合法 ARM64 ELF64 共享库骨架（`lib/arm64-v8a/libdex2c_stub.so`），
+   导出 JNI 桥接符号 `Java_com_elfpacker_dex2c_NativeBridge_invoke`
+3. 将方法列表写入 `META-INF/dex2c_manifest.bin` 供运行时 stub 使用
 
 ---
 
@@ -77,6 +121,33 @@ cd elf-packer-android
 - Android Studio Hedgehog 或更高版本
 - JDK 17+
 - Android SDK API 34
+
+---
+
+## 📁 项目结构
+
+```
+app/src/main/java/com/elfpacker/app/
+├── MainActivity.java                 # 主入口，ELF/APK 两大功能入口
+├── packer/
+│   ├── ElfPacker.java                # ELF 加壳接口
+│   ├── UpxPacker.java                # UPX 压缩加壳
+│   ├── GzipPacker.java               # AES-256-CBC + GZIP 加密
+│   ├── VmpPacker.java                # VMP 虚拟机保护
+│   └── OllvmPacker.java              # OLLVM 三重混淆
+├── protector/
+│   ├── ApkProtector.java             # APK 保护接口
+│   ├── StringObfuscator.java         # DEX 字符串池 XOR 加密
+│   ├── AssetObfuscator.java          # assets 重命名 + XOR 加密
+│   ├── ClassNameObfuscator.java      # 类名/方法名随机化
+│   └── Dex2CProtector.java           # native stub 注入
+├── ui/
+│   ├── ElfPackerActivity.java        # ELF 加壳界面
+│   ├── ApkProtectorActivity.java     # APK 加固界面
+│   └── PackerResultActivity.java     # 结果展示界面
+└── utils/
+    └── FileUtils.java                # 文件 I/O 工具
+```
 
 ---
 

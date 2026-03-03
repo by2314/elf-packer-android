@@ -1,0 +1,47 @@
+<resources>
+    <string name="app_name">加固大师</string>
+
+    <!-- Main screen -->
+    <string name="title_elf_packer">ELF 文件加壳</string>
+    <string name="desc_elf_packer">对 ELF 可执行二进制文件进行加密保护\nUPX · GZIP+AES · VMP · OLLVM</string>
+    <string name="title_apk_protector">APK 加固保护</string>
+    <string name="desc_apk_protector">对 Android APK 进行多维度加固混淆\n字符串混淆 · 资源混淆 · 类名混淆 · DEX2C</string>
+
+    <!-- ELF Packer -->
+    <string name="select_elf_file">选择 ELF 文件并加壳</string>
+    <string name="packer_upx">UPX 压缩加壳</string>
+    <string name="packer_gzip">GZIP 加密压缩</string>
+    <string name="packer_vmp">VMP 虚拟机保护</string>
+    <string name="packer_ollvm">OLLVM 混淆</string>
+    <string name="packer_upx_desc">DEFLATE 压缩 + UPX 魔数头，减小体积并防止静态分析</string>
+    <string name="packer_gzip_desc">AES-256-CBC 加密 + GZIP 双重保护，密钥由文件哈希派生</string>
+    <string name="packer_vmp_desc">XOR 混淆代码段 + 注入 VM 解释器头，隐藏真实指令</string>
+    <string name="packer_ollvm_desc">控制流平坦化 + 指令替换 + 虚假控制流三重混淆</string>
+
+    <!-- APK Protector -->
+    <string name="select_apk_file">选择 APK 文件并加固</string>
+    <string name="protect_string_obf">字符串混淆</string>
+    <string name="protect_asset_obf">资源文件混淆</string>
+    <string name="protect_class_obf">类名方法名混淆</string>
+    <string name="protect_dex2c">DEX2C 本地化</string>
+    <string name="protect_string_obf_desc">XOR 加密 DEX 字符串常量池，运行时动态解码</string>
+    <string name="protect_asset_obf_desc">随机重命名 assets 目录中的资源文件并写入映射表</string>
+    <string name="protect_class_obf_desc">将 DEX 中的类名、方法名替换为短随机标识符</string>
+    <string name="protect_dex2c_desc">将 DEX 方法包装为 native 调用桩，提升逆向难度</string>
+    <string name="label_protection_options">加固选项（可多选）</string>
+    <string name="btn_start_protect">开始加固</string>
+
+    <!-- Result -->
+    <string name="label_input_name">输入文件</string>
+    <string name="label_packer_type">保护方式</string>
+    <string name="label_original_size">原始大小</string>
+    <string name="label_packed_size">处理后大小</string>
+    <string name="label_ratio">变化率</string>
+    <string name="label_output_path">输出路径</string>
+    <string name="btn_share">分享文件</string>
+    <string name="btn_home">返回主页</string>
+
+    <!-- Common -->
+    <string name="processing">处理中，请稍候…</string>
+    <string name="cancel">取消</string>
+</resources>
