@@ -51,12 +51,12 @@ public class PackerResultActivity extends AppCompatActivity {
         }
 
         // 填充 UI
-        ((TextView) findViewById(R.id.tv_input_name)).setText(inputName);
-        ((TextView) findViewById(R.id.tv_packer_type)).setText(packerName);
-        ((TextView) findViewById(R.id.tv_original_size)).setText(FileUtils.formatSize(originalSize));
-        ((TextView) findViewById(R.id.tv_packed_size)).setText(FileUtils.formatSize(packedSize));
-        ((TextView) findViewById(R.id.tv_ratio)).setText(ratio);
-        ((TextView) findViewById(R.id.tv_output_path)).setText(outputPath);
+        setTextById(R.id.tv_input_name, inputName);
+        setTextById(R.id.tv_packer_type, packerName);
+        setTextById(R.id.tv_original_size, FileUtils.formatSize(originalSize));
+        setTextById(R.id.tv_packed_size, FileUtils.formatSize(packedSize));
+        setTextById(R.id.tv_ratio, ratio);
+        setTextById(R.id.tv_output_path, outputPath);
 
         // 分享文件
         MaterialButton btnShare = findViewById(R.id.btn_share);
@@ -70,12 +70,12 @@ public class PackerResultActivity extends AppCompatActivity {
     /** 通过 FileProvider 分享输出文件 */
     private void shareFile(String filePath) {
         if (filePath == null) {
-            Toast.makeText(this, "文件路径无效", Toast.LENGTH_SHORT).show();
+            showToast("文件路径无效", Toast.LENGTH_SHORT);
             return;
         }
         File file = new File(filePath);
         if (!file.exists()) {
-            Toast.makeText(this, "文件不存在：" + filePath, Toast.LENGTH_LONG).show();
+            showToast("文件不存在：" + filePath, Toast.LENGTH_LONG);
             return;
         }
         try {
@@ -89,7 +89,15 @@ public class PackerResultActivity extends AppCompatActivity {
             shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(Intent.createChooser(shareIntent, "分享加壳文件"));
         } catch (Exception e) {
-            Toast.makeText(this, "分享失败：" + e.getMessage(), Toast.LENGTH_LONG).show();
+            showToast("分享失败：" + e.getMessage(), Toast.LENGTH_LONG);
         }
+    }
+
+    private void setTextById(int viewId, String text) {
+        ((TextView) findViewById(viewId)).setText(text);
+    }
+
+    private void showToast(String message, int duration) {
+        Toast.makeText(this, message, duration).show();
     }
 }
